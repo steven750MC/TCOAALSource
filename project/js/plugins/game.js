@@ -20,7 +20,7 @@ const S = getString;
 // end of "needs cleanup" lol
 // game starts here
 "use strict";
-const DSH_STEP_SIZE = 1,
+var DSH_STEP_SIZE = 1,
   VOL_STEP_SIZE = 1,
   BASE_WALK_SPD = 4.1,
   DEFAULTS = {
