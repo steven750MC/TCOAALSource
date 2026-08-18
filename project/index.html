@@ -25,5 +25,233 @@
         <script type="text/javascript" src="js/rpg_windows.js"></script>
         <script type="text/javascript" src="js/plugins.js"></script>
         <script type="text/javascript" src="js/main.js"></script>
+
+<style>
+:root { /*قابل ویرایش:*/
+--controls-size: 20vh;  /*سایز کنترل ها*/
+ --btn-color: black;  /*رنگ متن دکمه ها*/
+--btn-bg: white; /*رنگ خود دکمه*/
+ --btn-radius: 20px;     /*نرمی گوشه ها*/
+ --pad-opacity: 0.15;  /*شفافیت دکمه ها*/
+--pad-active-opacity: 0.4;  /*شفافیت دکمه ها بعد از فشرده شدن*/
+--dpad-size: calc(var(--controls-size) * 0.75); --dpad-gap: 0px; --pad-color: hsl(0, 0%, 55%);}
+@media (orientation: portrait) { :root { --controls-size: 10vh; } } * { transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; user-select:none; text-overflow:ellipsis; } html { touch-action: none; width: 100%; height: 100%; } body { margin: 0; color: white; background: black; overflow: hidden; width: 100%; height: 100%; position: relative; }#canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; image-rendering: pixelated; image-rendering: crisp-edges; z-index: 1; pointer-events: auto; }
+#dpad { position: fixed; bottom: 1rem; left: 1rem; display: grid; grid-template-columns: var(--dpad-size) var(--dpad-size) var(--dpad-size); grid-template-rows: var(--dpad-size) var(--dpad-size) var(--dpad-size); gap: var(--dpad-gap); width: fit-content; height: fit-content; z-index: 1000; pointer-events: auto; } 
+.dpad-btn { background: var(--btn-bg); opacity: var(--pad-opacity); transition: opacity 0.15s, transform 0.15s; cursor: pointer; -webkit-tap-highlight-color: transparent; pointer-events: auto; -webkit-touch-callout: none; } .dpad-btn:active, .dpad-btn.active { opacity: var(--pad-active-opacity); box-shadow: 0 0 15px var(--btn-bg); } .dpad-up { grid-column: 2; grid-row: 1; border-radius: calc(var(--btn-radius)/2) calc(var(--btn-radius)/2) 0px 0px; } .dpad-down { grid-column: 2; grid-row: 3; border-radius: 0px 0px calc(var(--btn-radius)/2) calc(var(--btn-radius)/2); } .dpad-left { grid-column: 1; grid-row: 2; border-radius: calc(var(--btn-radius)/2) 0px 0px calc(var(--btn-radius)/2); } .dpad-right { grid-column: 3; grid-row: 2; border-radius: 0px calc(var(--btn-radius)/2) calc(var(--btn-radius)/2) 0px; } .dpad-center { grid-column: 2; grid-row: 2; border-radius: 0; }
+.btn {-webkit-touch-callout: none; -webkit-user-select: none; user-select: none; position: fixed; opacity: var(--pad-opacity); z-index: 1000; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; background: var(--btn-bg); color: var(--btn-color); border-radius: var(--btn-radius); font-weight: bold; pointer-events: auto; width: calc(var(--controls-size) / 1.2); height: calc(var(--controls-size) / 1.2); -webkit-touch-callout: none; } 
+.btn.active, .btn:active { box-shadow: 0 0 15px var(--btn-bg); opacity: var(--pad-active-opacity); transform: scale(0.85); }
+</style><canvas id="canvas" tabindex="-1" class="unselectable"></canvas>
+
+<!-- D-pad -->
+<div id="dpad" class="unselectable"> <div id="dpad-up" class="dpad-btn dpad-up" data-key="ArrowUp"></div>  <div id="dpad-left" class="dpad-btn dpad-left" data-key="ArrowLeft"></div>   <div id="dpad-center" class="dpad-btn dpad-center"></div>    <div id="dpad-right" class="dpad-btn dpad-right" data-key="ArrowRight"></div>    <div id="dpad-down" class="dpad-btn dpad-down" data-key="ArrowDown"></div></div>
+
+<!-- دکمه هارو اینجا اضافه یا ویرایش کن -->
+	
+<button class="btn" 
+    data-key="Escape" 
+    style="top:0%;left:0%;       font-size:16px;     border-radius:calc(var(--btn-radius));border-top-left-radius:0;">
+    ESC
+</button>
+
+<button class="btn"
+    data-key="Enter" 
+    style="bottom:5%;right:2%;    border-radius:calc(var(--btn-radius));width: calc(var(--controls-size)*1.4); height: calc(var(--controls-size) * 1.4);font-size:40px">
+    A
+</button>
+<button class="btn"
+    data-key="ShiftLeft" 
+    id="Shift"
+    style="top:5%;right:2%;    border-radius:calc(var(--btn-radius));width: calc(var(--controls-size)*1.4); height: calc(var(--controls-size) * 1.4);font-size:40px">
+    Run
+</button>
+
+<!-- End of buttons -->
+
+<script>
+(() => {
+
+const keyMap = {
+    ArrowUp: "up",
+    ArrowDown: "down",
+    ArrowLeft: "left",
+    ArrowRight: "right",
+    Enter: "ok",
+    Escape: "escape",
+    ShiftLeft: "shift",
+    ShiftRight: "shift"
+};
+
+function press(name){
+    if(window.Input)
+        Input._currentState[name] = true;
+}
+
+function release(name){
+    if(window.Input)
+        Input._currentState[name] = false;
+}
+
+function pressButton(btn){
+    const key = keyMap[btn.dataset.key];
+    if(!key) return;
+
+    press(key);
+    btn.classList.add("active");
+}
+
+function releaseButton(btn){
+    const key = keyMap[btn.dataset.key];
+    if(!key) return;
+
+    release(key);
+    btn.classList.remove("active");
+}
+
+//////////////////////////////////////////////////
+// دکمه‌های معمولی (A / Run / ESC)
+//////////////////////////////////////////////////
+
+document.querySelectorAll(".btn").forEach(btn=>{
+
+    btn.addEventListener("touchstart",e=>{
+        e.preventDefault();
+        pressButton(btn);
+    },{passive:false});
+
+    btn.addEventListener("touchend",e=>{
+        e.preventDefault();
+        releaseButton(btn);
+    },{passive:false});
+
+    btn.addEventListener("touchcancel",()=>{
+        releaseButton(btn);
+    });
+
+});
+
+//////////////////////////////////////////////////
+// D-Pad
+//////////////////////////////////////////////////
+
+const dpad=document.getElementById("dpad");
+let currentDirection=null;
+let touchId=null;
+
+const dirButtons={
+    up:document.getElementById("dpad-up"),
+    down:document.getElementById("dpad-down"),
+    left:document.getElementById("dpad-left"),
+    right:document.getElementById("dpad-right")
+};
+
+function setDirection(dir){
+
+    if(currentDirection===dir) return;
+
+    if(currentDirection){
+        release(currentDirection);
+        dirButtons[currentDirection].classList.remove("active");
+    }
+
+    currentDirection=dir;
+
+    if(dir){
+        press(dir);
+        dirButtons[dir].classList.add("active");
+    }
+
+}
+
+function getDirection(x,y){
+
+    const r=dpad.getBoundingClientRect();
+
+    const cx=r.left+r.width/2;
+    const cy=r.top+r.height/2;
+
+    const dx=x-cx;
+    const dy=y-cy;
+
+    const dead=r.width*0.12;
+
+    if(Math.abs(dx)<dead && Math.abs(dy)<dead)
+        return null;
+
+    if(Math.abs(dx)>Math.abs(dy))
+        return dx>0 ? "right":"left";
+
+    return dy>0 ? "down":"up";
+
+}
+
+dpad.addEventListener("touchstart",e=>{
+
+    e.preventDefault();
+
+    if(touchId!==null) return;
+
+    const t=e.changedTouches[0];
+
+    touchId=t.identifier;
+
+    setDirection(getDirection(t.clientX,t.clientY));
+
+},{passive:false});
+
+dpad.addEventListener("touchmove",e=>{
+
+    e.preventDefault();
+
+    for(const t of e.changedTouches){
+
+        if(t.identifier===touchId){
+
+            setDirection(getDirection(t.clientX,t.clientY));
+            break;
+
+        }
+
+    }
+
+},{passive:false});
+
+function endTouch(e){
+
+    for(const t of e.changedTouches){
+
+        if(t.identifier===touchId){
+
+            setDirection(null);
+            touchId=null;
+            break;
+
+        }
+
+    }
+
+}
+
+dpad.addEventListener("touchend",endTouch);
+dpad.addEventListener("touchcancel",endTouch);
+
+
+window.addEventListener("blur",()=>{
+
+    ["up","down","left","right","ok","escape","shift"].forEach(release);
+
+    document.querySelectorAll(".active").forEach(b=>{
+        b.classList.remove("active");
+    });
+
+    currentDirection=null;
+    touchId=null;
+
+});
+
+})();
+</script>    
+
+
+
     </body>
 </html>
